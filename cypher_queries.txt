@@ -1,0 +1,39 @@
+// Delete
+MATCH (n)
+DETACH DELETE n
+
+// Load Nodes
+LOAD CSV WITH HEADERS FROM 'https://raw.githubusercontent.com/claskovski/graphdb/main/musae_git_nodes.csv' AS row
+with row WHERE row.id is not null
+with row
+MERGE (d:dev {id: row.id, name: row.name})
+
+
+// Load Edges
+LOAD CSV WITH HEADERS FROM 'https://raw.githubusercontent.com/claskovski/graphdb/main/musae_git_edges.csv' as row
+WITH row LIMIT 175000
+MATCH (d1:dev {id: row.id_1})
+MATCH (d2:dev {id: row.id_2})
+MERGE (d1)-[:worksWith]->(d2)
+
+
+// 1.	Most relationships
+match r=(d1:dev)--(d2:dev)
+return d1.name, count(r)
+order by count(r) desc;
+
+// 2.	Avg Num relationships
+match r=(d1:dev)--(d2:dev)
+with d1.id as id, count(r) as rel_count
+return avg(rel_count)
+
+// 3.	Density
+MATCH p=(d1:dev)-[r:worksWith]-(d2:dev)
+with count(distinct d1) as nodes, count(distinct r) as rels
+return nodes, rels, (rels/(nodes * nodes-1.0))
+
+// 4.	Degrees of Separation, could turn into a function?
+match r=shortestPath((d1:dev)-[*]-(d2:dev))
+where d1.name = 'nfultz'
+return d2.name, length(r)
+order by length(r) desc
